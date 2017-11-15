@@ -1,10 +1,11 @@
-#!/bin/bash -x
+#!/bin/bash
+set -x
 
 #############################################
 # This is a simple battery warning script.  #
 # It uses i3's nagbar to display warnings.  #
 #                                           #
-# @author agribu                            #
+# @author agribuand forked me :)            #
 #############################################
 
 # lock file location
@@ -53,21 +54,33 @@ STAT=$(cat $ACPI_PATH/status)
 
 # get remaining energy value
 REM=`grep "POWER_SUPPLY_ENERGY_NOW" $ACPI_PATH/uevent | cut -d= -f2`
+if [ -z "$REM" ]; then
+    REM=`grep "POWER_SUPPLY_CHARGE_NOW" $ACPI_PATH/uevent | cut -d= -f2`
+fi
 
 # get full energy value
 FULL=`grep "POWER_SUPPLY_ENERGY_FULL_DESIGN" $ACPI_PATH/uevent | cut -d= -f2`
+if [ -z "$FULL" ]; then
+    FULL=`grep "POWER_SUPPLY_CHARGE_FULL_DESIGN" $ACPI_PATH/uevent | cut -d= -f2`
+fi
 
 # get current energy value in percent
 PERCENT=`echo $(( $REM * 100 / $FULL ))`
 
 # set error message
-MESSAGE="AWW SNAP! I am running out of juice ...  Please, charge me or I'll have to power down."
+WARN_MESSAGE="AWW SNAP! I am running out of juice ...  Please, charge me or I'll have to power down."
+CRIT_MESSAGE="AWW SNAP! I am running out of juice ...  Please, charge me or shut down or suspend."
 
 # set energy limit in percent, where warning should be displayed
-LIMIT="10"
+WARN_LIMIT="20"
+CRIT_LIMIT="10"
 
 # show warning if energy limit in percent is less then user set limit and
 # if battery is discharging
-if [ $PERCENT -le "$(echo $LIMIT)" ] && [ "$STAT" == "Discharging" ]; then
-    DISPLAY=:0.0 /usr/bin/i3-nagbar -m "$(echo $MESSAGE)"
+if [ $PERCENT -le "$(echo $CRIT_LIMIT)" ] && [ "$STAT" == "Discharging" ]; then
+    DISPLAY=:0.0 /usr/bin/i3-nagbar -t error -b "Power Off" "poweroff" -b "Suspend" "suspend" -m "$(echo $CRIT_MESSAGE)"
+elif [ $PERCENT -le "$(echo $WARN_LIMIT)" ] && [ "$STAT" == "Discharging" ]; then
+    DISPLAY=:0.0 /usr/bin/i3-nagbar -t warning -m "$(echo $WARN_MESSAGE)"
 fi
+
+exit 0
